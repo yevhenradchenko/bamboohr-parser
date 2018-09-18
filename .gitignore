@@ -1,0 +1,16 @@
+.idea/*
+.idea/vcs.xml
+.xml
+*.db
+/bamboovenv
+config.py
+*.json
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.pyc
+idea
