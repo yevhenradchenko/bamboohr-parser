@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import xml.etree.ElementTree as ET
+import config
 import requests
 import json
 
@@ -36,8 +37,7 @@ connection = engine.connect()
 Base.metadata.create_all(engine)
 
 
-api_key = 'YOURS_BAMBOOHR_APIKEY'
-url = 'https://' + api_key + ':x@api.bamboohr.com/api/gateway.php/DOMAIN_NAME/v1/employees/directory'
+url = 'https://' + config.API_KEY + ':x@api.bamboohr.com/api/gateway.php/' + config.DOMAIN +'/v1/employees/directory'
 r = requests.get(url)
 root = ET.fromstring(r.text)
 
