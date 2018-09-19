@@ -30,13 +30,17 @@ class EmployeeData(Base):
         self.mobilePhone = mobilePhone
 
 
-engine = create_engine('sqlite:///employee_db.db')
+def database_init():
 
-connection = engine.connect()
+    engine = create_engine('sqlite:///employee_db.db')
 
-Base.metadata.create_all(engine)
+    connection = engine.connect()
 
-session_factory = sessionmaker(engine)
+    Base.metadata.create_all(engine)
+
+    session_factory = sessionmaker(engine)
+
+    return (session_factory, connection)
 
 
 def bamboo_request():
@@ -88,6 +92,8 @@ def bamboo_parse():
 
 def write_session(emp):
 
+    session_factory, connection = database_init()
+
     session = session_factory()
 
     employees_list = [EmployeeData(name=item['name'],
@@ -115,8 +121,8 @@ def write_session(emp):
         json.dump(write_list, file)
 
     session.close()
+    connection.close()
 
 
 if __name__ == '__main__':
     bamboo_parse()
-    connection.close()
