@@ -36,71 +36,87 @@ connection = engine.connect()
 
 Base.metadata.create_all(engine)
 
-
-url = 'https://' + config.API_KEY + ':x@api.bamboohr.com/api/gateway.php/' + config.DOMAIN +'/v1/employees/directory'
-r = requests.get(url)
-root = ET.fromstring(r.text)
-
-
-employees = []
-for emp in root.iter('employee'):
-
-        name_tag = {'name': '',
-                    'department': '',
-                    'jobTitle': '',
-                    'email': '',
-                    'id': int(emp.attrib['id']),
-                    'mobilePhone': '',
-                    }
-
-        for data in emp.iter('field'):
-            if data.attrib['id'] == 'displayName':
-                name_tag['name'] = data.text
-            elif data.attrib['id'] == 'department':
-                name_tag['department'] = data.text
-            elif data.attrib['id'] == 'jobTitle':
-                name_tag['jobTitle'] = data.text
-            elif data.attrib['id'] == 'workEmail':
-                name_tag['email'] = data.text
-            elif data.attrib['id'] == 'id':
-                name_tag['id'] = data.text
-            elif data.attrib['id'] == 'mobilePhone':
-                name_tag['mobilePhone'] = data.text
-            else:
-                continue
-        employees.append(name_tag)
-
-
 session_factory = sessionmaker(engine)
-session = session_factory()
 
 
-employees_list = [EmployeeData(name=item['name'],
-                               department=item['department'],
-                               jobTitle=item['jobTitle'],
-                               email=item['email'],
-                               id=item['id'],
-                               mobilePhone=item['mobilePhone']) for item in employees]
+def bamboo_request():
 
-avoid_duplicates = list(connection.execute('select * from employee_data'))
+    url = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
 
+    try:
+        r = requests.get(url)
+        root = ET.fromstring(r.text)
+        return root
 
-for i in employees_list:
-    if i.name not in [j[1] for j in avoid_duplicates]:
-        session.add(i)
-
-session.commit()
-
-write_list = [{'id': i[0],
-               'name': i[1],
-               'department': i[2],
-               'jobTitle': i[3],
-               'email': i[4],
-               'mobilePhone': i[5]} for i in list(connection.execute('select * from employee_data'))]
-
-session.close()
-connection.close()
+    except requests.HTTPError:
+        return False
 
 
-with open('employee_data.json', 'w') as file:
-    data = json.dump(write_list, file)
+def bamboo_parse():
+    root = bamboo_request()
+    if root:
+        employees = []
+        for emp in root.iter('employee'):
+
+                name_tag = {'name': '',
+                            'department': '',
+                            'jobTitle': '',
+                            'email': '',
+                            'id': int(emp.attrib['id']),
+                            'mobilePhone': '',
+                            }
+
+                for data in emp.iter('field'):
+                    if data.attrib['id'] == 'displayName':
+                        name_tag['name'] = data.text
+                    elif data.attrib['id'] == 'department':
+                        name_tag['department'] = data.text
+                    elif data.attrib['id'] == 'jobTitle':
+                        name_tag['jobTitle'] = data.text
+                    elif data.attrib['id'] == 'workEmail':
+                        name_tag['email'] = data.text
+                    elif data.attrib['id'] == 'id':
+                        name_tag['id'] = data.text
+                    elif data.attrib['id'] == 'mobilePhone':
+                        name_tag['mobilePhone'] = data.text
+                    else:
+                        continue
+                employees.append(name_tag)
+
+        write_session(employees)
+
+
+def write_session(emp):
+
+    session = session_factory()
+
+    employees_list = [EmployeeData(name=item['name'],
+                                   department=item['department'],
+                                   jobTitle=item['jobTitle'],
+                                   email=item['email'],
+                                   id=item['id'],
+                                   mobilePhone=item['mobilePhone']) for item in emp]
+
+    avoid_duplicates = list(connection.execute('select * from employee_data'))
+
+    for i in employees_list:
+        if i.name not in [j[1] for j in avoid_duplicates]:
+            session.add(i)
+
+    session.commit()
+
+    write_list = [{'id': i[0],
+                   'name': i[1],
+                   'department': i[2],
+                   'jobTitle': i[3],
+                   'email': i[4],
+                   'mobilePhone': i[5]} for i in list(connection.execute('select * from employee_data'))]
+    with open('employee_data.json', 'w') as file:
+        json.dump(write_list, file)
+
+    session.close()
+
+
+if __name__ == '__main__':
+    bamboo_parse()
+    connection.close()
