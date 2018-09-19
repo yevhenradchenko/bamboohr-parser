@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ElementalTree
 import config
 import requests
 import json
@@ -49,7 +49,7 @@ def bamboo_request():
 
     try:
         r = requests.get(url)
-        root = ET.fromstring(r.text)
+        root = ElementalTree.fromstring(r.text)
         return root
 
     except requests.HTTPError:
