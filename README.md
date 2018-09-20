@@ -18,7 +18,7 @@ def available_fields():
 ### Pay attentions to all places what you need to change is case off adding new fields:
 
 
-- Add new field's to:
+- Add new field's to :
 ```python
 class EmployeeData(Base):
 ```
@@ -31,7 +31,7 @@ def bamboo_parse():
 def write_session(emp):
 ```
 
-- And don't forget about write list :D :
+- And don't forget about write list :
 
 ```python
 write_list = [{'id': i[0],
