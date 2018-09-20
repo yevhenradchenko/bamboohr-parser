@@ -61,23 +61,29 @@ def available_fields():
 
     xml_fields = bamboo_request()
 
-    left_padding = 2
-    right_padding = 4
+    padding = 8
 
     for fields_set in xml_fields.iter('fieldset'):
         fields_list = [field.attrib['id']for field in fields_set.iter('field')]
 
-        box_len = max([len(title) for title in fields_list]) + sum([left_padding, right_padding])
+        box_len = max([len(title) for title in fields_list]) + padding
         top_and_bottom = ''.join(['+'] + ['-' * box_len] + ['+'])
         result = top_and_bottom
 
         for title in fields_list:
-            spaces = box_len - len(title)
-            left_spaces = ' ' * left_padding
-            right_spaces = ' ' * (spaces - left_padding)
+            if len(title) % 2:
+                right_indent = (box_len - len(title)) // 2 + 1
+            else:
+                right_indent = (box_len - len(title)) // 2
+
+            left_indent = (box_len - len(title)) // 2
+            left_spaces = ' ' * left_indent
+
+            right_spaces = ' ' * right_indent
             result += '\n' + '|' + left_spaces + title + right_spaces + '|\n'
 
         result += top_and_bottom
+
         return result
 
 
