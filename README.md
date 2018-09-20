@@ -1,4 +1,4 @@
-# BambooHR API Read and Parse
+# BambooHR 'Read and Parse' w/o API usage
 
 If you ever needed local database or automate data usage from BambooHR service, you can use this script for you needs.
 Parse though all of your data on BambooHR.
