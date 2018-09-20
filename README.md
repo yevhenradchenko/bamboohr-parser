@@ -1,4 +1,11 @@
-# BambooHR API Parse and Read Script
-#
-# You can use this script to get all info from Bamboo HR service
-# printout and open 'url' var to see all kind of fields what you can get with your account access level
+# BambooHR API Read and Parse
+
+If you ever needed local database or automate data usage from BambooHR service, you can use this script for you needs.
+Parse though all of your data on BambooHR.
+
+
+## Install all needed libraries
+
+```shell
+pip install -r requirements.txt
+``` 
