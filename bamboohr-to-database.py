@@ -57,6 +57,30 @@ def bamboo_request():
         return False
 
 
+def available_fields():
+
+    xml_fields = bamboo_request()
+
+    left_padding = 2
+    right_padding = 4
+
+    for fields_set in xml_fields.iter('fieldset'):
+        fields_list = [field.attrib['id']for field in fields_set.iter('field')]
+
+        box_len = max([len(title) for title in fields_list]) + sum([left_padding, right_padding])
+        top_and_bottom = ''.join(['+'] + ['-' * box_len] + ['+'])
+        result = top_and_bottom
+
+        for title in fields_list:
+            spaces = box_len - len(title)
+            left_spaces = ' ' * left_padding
+            right_spaces = ' ' * (spaces - left_padding)
+            result += '\n' + '|' + left_spaces + title + right_spaces + '|\n'
+
+        result += top_and_bottom
+        return result
+
+
 def bamboo_parse():
     root = bamboo_request()
     if root:
@@ -126,4 +150,5 @@ def write_session(emp):
 
 
 if __name__ == '__main__':
+    print(available_fields())
     bamboo_parse()
