@@ -40,7 +40,7 @@ def database_init():
 
     session_factory = sessionmaker(engine)
 
-    return (session_factory, connection)
+    return session_factory, connection
 
 
 def bamboo_request():
@@ -48,8 +48,9 @@ def bamboo_request():
     url = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
 
     try:
-        r = requests.get(url)
-        root = ElementalTree.fromstring(r.text)
+        requested_url = requests.get(url)
+        root = ElementalTree.fromstring(requested_url.text)
+
         return root
 
     except requests.HTTPError:
@@ -118,7 +119,7 @@ def write_session(emp):
                    'email': i[4],
                    'mobilePhone': i[5]} for i in list(connection.execute('select * from employee_data'))]
     with open('employee_data.json', 'w') as file:
-        json.dump(write_list, file)
+        json.dump(write_list, file, indent=4)
 
     session.close()
     connection.close()
