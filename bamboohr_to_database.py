@@ -10,6 +10,8 @@ import json
 
 Base = declarative_base()
 
+url = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
+
 
 class EmployeeData(Base):
 
@@ -43,9 +45,7 @@ def database_init():
     return session_factory, connection
 
 
-def bamboo_request():
-
-    url = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
+def bamboo_request(url):
 
     try:
         requested_url = requests.get(url)
@@ -59,7 +59,7 @@ def bamboo_request():
 
 def available_fields():
 
-    xml_fields = bamboo_request()
+    xml_fields = bamboo_request(url)
 
     padding = 8
 
@@ -88,9 +88,14 @@ def available_fields():
 
 
 def bamboo_parse():
-    root = bamboo_request()
+
+    global url
+    root = bamboo_request(url)
+
     if root:
+
         employees = []
+
         for emp in root.iter('employee'):
 
                 name_tag = {'name': '',
