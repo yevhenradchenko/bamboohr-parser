@@ -7,15 +7,13 @@ import config
 import requests
 import json
 
-
 Base = declarative_base()
 
-url = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
+BAMBOO_URL = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
 
 
 class EmployeeData(Base):
-
-    __tablename__ = 'employee_data'
+    _tablename = 'employee_data'
     id = Column(Integer, primary_key=True)
     name = Column(String(120))
     department = Column(String(120))
@@ -23,143 +21,138 @@ class EmployeeData(Base):
     email = Column(String(120))
     mobilePhone = Column(String(120))
 
-    def __init__(self, name, department, jobTitle, email, id, mobilePhone):
+    def __init__(self, name, department, job_title, email, _id, mobile_phone):
         self.name = name
         self.department = department
-        self.jobTitle = jobTitle
+        self.jobTitle = job_title
         self.email = email
-        self.id = id
-        self.mobilePhone = mobilePhone
+        self.id = _id
+        self.mobilePhone = mobile_phone
 
 
-def database_init():
+class BambooParser:
 
-    engine = create_engine('sqlite:///employee_db.db')
+    def __init__(self, url: str):
+        self._bamboo_url = url
 
-    connection = engine.connect()
+    def _database_init(self):
 
-    Base.metadata.create_all(engine)
+        engine = create_engine('sqlite:///employee_db.db')
 
-    session_factory = sessionmaker(engine)
+        connection = engine.connect()
 
-    return session_factory, connection
+        Base.metadata.create_all(engine)
 
+        session_factory = sessionmaker(engine)
 
-def bamboo_request(url):
+        return session_factory, connection
 
-    try:
-        requested_url = requests.get(url)
-        root = ElementalTree.fromstring(requested_url.text)
+    def _get_employees(self):
+        try:
+            response = requests.get(self._bamboo_url)
+            xml = ElementalTree.fromstring(response.text)
+            return xml
 
-        return root
+        except requests.HTTPError:
+            return False
 
-    except requests.HTTPError:
-        return False
+    def available_fields(self):
 
+        xml_fields = self._get_employees()
+        padding = 8
 
-def available_fields():
+        for fields_set in xml_fields.iter('fieldset'):
+            fields_list = [field.attrib['id'] for field in fields_set.iter('field')]
 
-    xml_fields = bamboo_request(url)
+            box_len = max([len(title) for title in fields_list]) + padding
+            top_and_bottom = ''.join(['+'] + ['-' * box_len] + ['+'])
+            result = top_and_bottom
 
-    padding = 8
+            for title in fields_list:
+                if len(title) % 2:
+                    right_indent = (box_len - len(title)) // 2 + 1
+                else:
+                    right_indent = (box_len - len(title)) // 2
 
-    for fields_set in xml_fields.iter('fieldset'):
-        fields_list = [field.attrib['id']for field in fields_set.iter('field')]
+                left_indent = (box_len - len(title)) // 2
+                left_spaces = ' ' * left_indent
 
-        box_len = max([len(title) for title in fields_list]) + padding
-        top_and_bottom = ''.join(['+'] + ['-' * box_len] + ['+'])
-        result = top_and_bottom
+                right_spaces = ' ' * right_indent
+                result += '\n' + '|' + left_spaces + title + right_spaces + '|\n'
 
-        for title in fields_list:
-            if len(title) % 2:
-                right_indent = (box_len - len(title)) // 2 + 1
-            else:
-                right_indent = (box_len - len(title)) // 2
+            result += top_and_bottom
 
-            left_indent = (box_len - len(title)) // 2
-            left_spaces = ' ' * left_indent
+            return result
 
-            right_spaces = ' ' * right_indent
-            result += '\n' + '|' + left_spaces + title + right_spaces + '|\n'
+    def bamboo_parse(self):
+        xml = self._get_employees()
 
-        result += top_and_bottom
-
-        return result
-
-
-def bamboo_parse():
-
-    global url
-    root = bamboo_request(url)
-
-    if root:
+        if not xml:
+            return
 
         employees = []
+        for emp in xml.iter('employee'):
+            name_tag = {'name': '', 'department': '', 'jobTitle': '',
+                        'email': '', 'id': int(emp.attrib['id']), 'mobilePhone': ''}
 
-        for emp in root.iter('employee'):
+            for data in emp.iter('field'):
+                attrib_id = data.attrib['id']
+                text = data.text
 
-                name_tag = {'name': '',
-                            'department': '',
-                            'jobTitle': '',
-                            'email': '',
-                            'id': int(emp.attrib['id']),
-                            'mobilePhone': '',
-                            }
+                if attrib_id == 'displayName':
+                    name_tag['name'] = text
+                elif attrib_id == 'department':
+                    name_tag['department'] = text
+                elif attrib_id == 'jobTitle':
+                    name_tag['jobTitle'] = text
+                elif attrib_id == 'workEmail':
+                    name_tag['email'] = text
+                elif attrib_id == 'id':
+                    name_tag['id'] = text
+                elif attrib_id == 'mobilePhone':
+                    name_tag['mobilePhone'] = text
+                else:
+                    continue
 
-                for data in emp.iter('field'):
-                    if data.attrib['id'] == 'displayName':
-                        name_tag['name'] = data.text
-                    elif data.attrib['id'] == 'department':
-                        name_tag['department'] = data.text
-                    elif data.attrib['id'] == 'jobTitle':
-                        name_tag['jobTitle'] = data.text
-                    elif data.attrib['id'] == 'workEmail':
-                        name_tag['email'] = data.text
-                    elif data.attrib['id'] == 'id':
-                        name_tag['id'] = data.text
-                    elif data.attrib['id'] == 'mobilePhone':
-                        name_tag['mobilePhone'] = data.text
-                    else:
-                        continue
-                employees.append(name_tag)
+            employees.append(name_tag)
 
-        write_session(employees)
+            self._write_session(employees)
 
+    def _write_session(self, emp):
 
-def write_session(emp):
+        session_factory, connection = self._database_init()
 
-    session_factory, connection = database_init()
+        session = session_factory()
 
-    session = session_factory()
+        employees_list = [EmployeeData(name=item['name'],
+                                       department=item['department'],
+                                       job_title=item['jobTitle'],
+                                       email=item['email'],
+                                       _id=item['id'],
+                                       mobile_phone=item['mobilePhone']) for item in emp]
 
-    employees_list = [EmployeeData(name=item['name'],
-                                   department=item['department'],
-                                   jobTitle=item['jobTitle'],
-                                   email=item['email'],
-                                   id=item['id'],
-                                   mobilePhone=item['mobilePhone']) for item in emp]
+        avoid_duplicates = list(connection.execute('select * from employee_data'))
 
-    avoid_duplicates = list(connection.execute('select * from employee_data'))
+        for i in employees_list:
+            if i.name not in [j[1] for j in avoid_duplicates]:
+                session.add(i)
 
-    for i in employees_list:
-        if i.name not in [j[1] for j in avoid_duplicates]:
-            session.add(i)
+        session.commit()
 
-    session.commit()
+        write_list = [{'id': i[0],
+                       'name': i[1],
+                       'department': i[2],
+                       'jobTitle': i[3],
+                       'email': i[4],
+                       'mobilePhone': i[5]} for i in list(connection.execute('select * from employee_data'))]
+        with open('employee_data.json', 'w') as file:
+            json.dump(write_list, file, indent=4)
 
-    write_list = [{'id': i[0],
-                   'name': i[1],
-                   'department': i[2],
-                   'jobTitle': i[3],
-                   'email': i[4],
-                   'mobilePhone': i[5]} for i in list(connection.execute('select * from employee_data'))]
-    with open('employee_data.json', 'w') as file:
-        json.dump(write_list, file, indent=4)
-
-    session.close()
-    connection.close()
+        session.close()
+        connection.close()
 
 
 if __name__ == '__main__':
-    print(available_fields())
-    bamboo_parse()
+    bamboo_parser = BambooParser(url=BAMBOO_URL)
+    print(bamboo_parser.available_fields())
+    bamboo_parser.bamboo_parse()

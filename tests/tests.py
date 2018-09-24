@@ -9,7 +9,7 @@ class TestRequests(unittest.TestCase):
         self.assertEqual(db_init, )
 
     def test_get_request(self):
-        response = master.bamboo_request(url=master.url)
+        response = master.bamboo_request(url=master.BAMBOO_URL)
         self.assertNotEqual(response, False, msg='HTTP Request is FAILED')
 
     def test_available_fields(self):
