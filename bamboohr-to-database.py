@@ -7,12 +7,10 @@ import config
 import requests
 import json
 
-
 Base = declarative_base()
 
 
 class EmployeeData(Base):
-
     __tablename__ = 'employee_data'
     id = Column(Integer, primary_key=True)
     name = Column(String(120))
@@ -30,99 +28,91 @@ class EmployeeData(Base):
         self.mobilePhone = mobilePhone
 
 
-def database_init():
-
-    engine = create_engine('sqlite:///employee_db.db')
-
-    connection = engine.connect()
-
-    Base.metadata.create_all(engine)
-
-    session_factory = sessionmaker(engine)
-
-    return (session_factory, connection)
+class BambooParser:
+    _url = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
 
 
-def bamboo_request():
+    def _database_init(self):
+        engine = create_engine('sqlite:///employee_db.db')
+        Base.metadata.create_all(engine)
+        self._connection = engine.connect()
+        self._session_factory = sessionmaker(engine)
 
-    url = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMAIN + config.API_DIRECTORY_REQUEST
+    def _get_employees_xml(self):
+        try:
+            request = requests.get(self._url)
+            xml_root = ElementalTree.fromstring(request.text)
+            return xml_root
+        except requests.HTTPError:
+            return None
 
-    try:
-        r = requests.get(url)
-        root = ElementalTree.fromstring(r.text)
-        return root
+    def parse(self):
+        root = self._get_employees_xml()
+        if not root:
+            return
 
-    except requests.HTTPError:
-        return False
-
-
-def bamboo_parse():
-    root = bamboo_request()
-    if root:
         employees = []
         for emp in root.iter('employee'):
 
-                name_tag = {'name': '',
-                            'department': '',
-                            'jobTitle': '',
-                            'email': '',
-                            'id': int(emp.attrib['id']),
-                            'mobilePhone': '',
-                            }
+            name_tag = {'name': '',
+                        'department': '',
+                        'jobTitle': '',
+                        'email': '',
+                        'id': int(emp.attrib['id']),
+                        'mobilePhone': '',
+                        }
 
-                for data in emp.iter('field'):
-                    if data.attrib['id'] == 'displayName':
-                        name_tag['name'] = data.text
-                    elif data.attrib['id'] == 'department':
-                        name_tag['department'] = data.text
-                    elif data.attrib['id'] == 'jobTitle':
-                        name_tag['jobTitle'] = data.text
-                    elif data.attrib['id'] == 'workEmail':
-                        name_tag['email'] = data.text
-                    elif data.attrib['id'] == 'id':
-                        name_tag['id'] = data.text
-                    elif data.attrib['id'] == 'mobilePhone':
-                        name_tag['mobilePhone'] = data.text
-                    else:
-                        continue
-                employees.append(name_tag)
+            for data in emp.iter('field'):
+                if data.attrib['id'] == 'displayName':
+                    name_tag['name'] = data.text
+                elif data.attrib['id'] == 'department':
+                    name_tag['department'] = data.text
+                elif data.attrib['id'] == 'jobTitle':
+                    name_tag['jobTitle'] = data.text
+                elif data.attrib['id'] == 'workEmail':
+                    name_tag['email'] = data.text
+                elif data.attrib['id'] == 'id':
+                    name_tag['id'] = data.text
+                elif data.attrib['id'] == 'mobilePhone':
+                    name_tag['mobilePhone'] = data.text
+                else:
+                    continue
 
-        write_session(employees)
+            employees.append(name_tag)
 
+        self.write_session(employees)
 
-def write_session(emp):
+    def write_session(self, employees):
 
-    session_factory, connection = database_init()
+        self._database_init()
+        session = self._session_factory()
 
-    session = session_factory()
+        def _parse_employee(item):
+            return EmployeeData(name=item['name'], department=item['department'], jobTitle=item['jobTitle'],
+                                email=item['email'], id=item['id'], mobilePhone=item['mobilePhone'])
 
-    employees_list = [EmployeeData(name=item['name'],
-                                   department=item['department'],
-                                   jobTitle=item['jobTitle'],
-                                   email=item['email'],
-                                   id=item['id'],
-                                   mobilePhone=item['mobilePhone']) for item in emp]
+        employees_list = [_parse_employee(item) for item in employees]
 
-    avoid_duplicates = list(connection.execute('select * from employee_data'))
+        avoid_duplicates = list(self._connection.execute('select * from employee_data'))
 
-    for i in employees_list:
-        if i.name not in [j[1] for j in avoid_duplicates]:
-            session.add(i)
+        for i in employees_list:
+            if i.name not in [j[1] for j in avoid_duplicates]:
+                session.add(i)
 
-    session.commit()
+        session.commit()
 
-    write_list = [{'id': i[0],
-                   'name': i[1],
-                   'department': i[2],
-                   'jobTitle': i[3],
-                   'email': i[4],
-                   'mobilePhone': i[5]} for i in list(connection.execute('select * from employee_data'))]
-    with open('employee_data.json', 'w') as file:
-        json.dump(write_list, file)
+        write_list = [{'id': i[0],
+                       'name': i[1],
+                       'department': i[2],
+                       'jobTitle': i[3],
+                       'email': i[4],
+                       'mobilePhone': i[5]} for i in list(self._connection.execute('select * from employee_data'))]
+        with open('employee_data.json', 'w') as file:
+            json.dump(write_list, file)
 
-    session.close()
-    connection.close()
+        session.close()
+        self._connection.close()
 
 
 if __name__ == '__main__':
-    bamboo_parse()
+    BambooParser().parse()
