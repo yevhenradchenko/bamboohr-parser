@@ -13,7 +13,7 @@ BAMBOO_URL = 'https://' + config.API_KEY + config.API_REQUEST_GATE + config.DOMA
 
 
 class EmployeeData(Base):
-    _tablename = 'employee_data'
+    __tablename__ = 'employee_data'
     id = Column(Integer, primary_key=True)
     name = Column(String(120))
     department = Column(String(120))
