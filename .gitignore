@@ -3,6 +3,7 @@
 .xml
 *.db
 /bamboovenv
+/backup
 config.py
 *.json
 .DS_Store
