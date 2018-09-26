@@ -47,7 +47,7 @@ class BambooParser:
 
         return session_factory, connection
 
-    def _get_employees(self):
+    def _get_employees(self, url=BAMBOO_URL):
         try:
             response = requests.get(self._bamboo_url)
             xml = ElementalTree.fromstring(response.text)
