@@ -3,4 +3,4 @@ chardet==3.0.4
 idna==2.7
 requests==2.19.1
 SQLAlchemy==1.2.11
-urllib3==1.23
+urllib3==1.24.2
